@@ -1,6 +1,8 @@
 
+#include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "CollisionQueryParams.h"
 #include "Grabber.h"
 
 #define OUT
@@ -31,8 +33,26 @@ void UGrabber::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
-	
+	PhysicsHandle = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
+	if(!PhysicsHandle)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Not Find PhysicsHandle"));
+	}
+
+	InputComponent = GetOwner()->FindComponentByClass<UInputComponent>();
+	if(!InputComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Not Find InputComponent"));
+	}
+	else
+	{
+		InputComponent->BindAction("Grab", IE_Pressed, this, &UGrabber::Grab);
+	}
+}
+
+void UGrabber::Grab()
+{
+	DEBUG("Grab Function is executed");
 }
 
 
@@ -45,9 +65,22 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 	// Get players viewpoints
 	FVector PlayerViewPointLocation;
 	FRotator PlayerViewPointRotation;
-
 	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(OUT PlayerViewPointLocation, OUT PlayerViewPointRotation);
-	DEBUG(GetVariableName(PlayerViewPointLocation), PlayerViewPointLocation.ToString());
-	DEBUG(GetVariableName(PlayerViewPointRotation), PlayerViewPointRotation.ToString());
+	// DEBUG(GetVariableName(PlayerViewPointLocation), PlayerViewPointLocation.ToString());
+	// DEBUG(GetVariableName(PlayerViewPointRotation), PlayerViewPointRotation.ToString());
+
+	//プレイヤーが見ている方向からReachの分だけ線を見えるようにする。
+	FVector LineTraceEnd = PlayerViewPointLocation + PlayerViewPointRotation.Vector() * Reach;
+	DrawDebugLine(GetWorld(), PlayerViewPointLocation, LineTraceEnd, FColor(0, 255, 0), false, 0.f, 0.f, 5.f);
+
+	//LineTraceEnd内に入るオブジェクトの情報を取得する。
+	FHitResult Hit;
+	FCollisionQueryParams TraceParams(FName(TEXT("")), false, GetOwner());
+	GetWorld()->LineTraceSingleByObjectType(OUT Hit, PlayerViewPointLocation, LineTraceEnd, FCollisionObjectQueryParams(ECollisionChannel::ECC_PhysicsBody), TraceParams);
+	AActor* HitActor = Hit.GetActor();
+	if(HitActor)
+	{
+		DEBUG(Hit.GetActor()->GetName());
+	}
 }
 
